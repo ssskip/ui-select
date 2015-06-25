@@ -27,7 +27,7 @@ var config = {
 };
 
 gulp.task('default', ['build','test']);
-gulp.task('build', ['scripts', 'styles']);
+gulp.task('build', ['tidy.scripts', 'styles']);
 gulp.task('test', ['build', 'karma']);
 
 gulp.task('watch', ['build','karma-watch'], function() {
@@ -38,9 +38,7 @@ gulp.task('clean', function(cb) {
   del(['dist'], cb);
 });
 
-gulp.task('scripts', ['clean'], function() {
-
-  var buildTemplates = function () {
+var buildTemplates = function () {
     return gulp.src('src/**/*.html')
       .pipe(minifyHtml({
              empty: true,
@@ -49,7 +47,6 @@ gulp.task('scripts', ['clean'], function() {
             }))
       .pipe(templateCache({module: 'ui.select'}));
   };
-
   var buildLib = function(){
     return gulp.src(['src/common.js','src/*.js'])
       .pipe(plumber({
@@ -63,6 +60,26 @@ gulp.task('scripts', ['clean'], function() {
       .pipe(jshint.reporter('fail'));
   };
 
+gulp.task('tidy.scripts',['clean'],function(){
+
+  buildLib().pipe(plumber({
+      errorHandler: handleError
+    })).pipe(header(config.banner, {
+      timestamp: (new Date()).toISOString(), pkg: config.pkg
+    }))
+    .pipe(gulp.dest('dist'))
+    .pipe(uglify({preserveComments: 'some'}))
+    .pipe(rename({ext:'.min.js'}))
+    .pipe(gulp.dest('dist'));
+  buildTemplates().pipe(concat('templates.js'))
+    .pipe(gulp.dest('dist'))
+    .pipe(uglify({preserveComments: 'some'}))
+    .pipe(rename({ext:'.min.js'}))
+    .pipe(gulp.dest('dist'));
+}
+);
+
+gulp.task('scripts', ['clean'], function() {
   return es.merge(buildLib(), buildTemplates())
     .pipe(plumber({
       errorHandler: handleError
@@ -75,7 +92,6 @@ gulp.task('scripts', ['clean'], function() {
     .pipe(uglify({preserveComments: 'some'}))
     .pipe(rename({ext:'.min.js'}))
     .pipe(gulp.dest('dist'));
-
 });
 
 gulp.task('styles', ['clean'], function() {
